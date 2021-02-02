@@ -9,18 +9,33 @@
 
 int is_hidden(const char *name);
 
-int main(int argc, char *argv[])
+int main(void)
 {
+	FILE *HISTFILEP = NULL;
+
+	char HISTFILE[100]= ".bash_history";
+
+	HISTFILEP = fopen(HISTFILE, "a+");
+
+	char cwd[1000];
+
+	int commands = 0;
 	while (1)
 	{
-		
 		char Input[100] ;
 		char *tokens[10] ;
 		int i = 0;
 		int strlength = 0;
+		char s[100] ;
+		getcwd(s, 100);
+		printf("%s>",s);
 		
-		printf(">");
 		fgets(Input,100,stdin);
+
+		commands++;
+
+		fprintf(HISTFILEP," %d  %s",commands,Input);
+
 		int PIDFlag = 0;
 		int PIDs[100];
 		
@@ -85,6 +100,21 @@ int main(int argc, char *argv[])
 						printf("%s\n",cwd);
 					 } 
 					
+				}
+				else if (strcmp(tokens[0],"history") == 0)
+				{
+
+					FILE * HISTFILER = fopen(HISTFILE,"r");
+					int c = getc(HISTFILER);
+					while (c != EOF)
+					{
+   						printf("%c",c);
+      					c = getc(HISTFILER);
+					}
+
+				   fclose(HISTFILER);
+
+
 				}
 			break;
 			case 1: 
@@ -155,11 +185,63 @@ int main(int argc, char *argv[])
 					{
 						char s[100] ;
 						getcwd(s, 100);
-						printf("Directory Changed to %s\n",s);
 					}
 				}
-			
+				/*History Command "*/
+				else if (strcmp(tokens[0],"history") == 0)
+				{
+					if (strcmp(tokens[1],"-c") == 0)
+					{
+						fclose(HISTFILEP);
+						HISTFILEP = fopen(HISTFILE,"w");
+						fprintf(HISTFILEP,"%c",EOF);
+						fclose(HISTFILEP);
+						HISTFILEP = fopen(HISTFILE,"a+");
+						commands = 0;
+						
+					}
+					else
+					{
+						FILE * HISTFILER = fopen(HISTFILE,"r");
+						int c = getc(HISTFILER);
+						int Line = 0;
+						int LineOffest[1000];
+						int CharacterCount = 0;
+						int StartRequestLine = 0;
+   						while (c != EOF)
+   						{
+   							CharacterCount ++;
+      						if(c == '\n') 
+							{
+								LineOffest[Line] = CharacterCount;
+      							Line ++;
+							}
+      						c = getc(HISTFILER);
+					   }
 
+					   StartRequestLine = Line - atoi(tokens[1]) - 1 ;
+
+					   if(StartRequestLine > 0)
+					   {
+						   	fseek(HISTFILER, LineOffest[StartRequestLine],SEEK_SET);
+
+							c = getc(HISTFILER);
+
+	   						while (c != EOF)
+	   						{
+	   							printf("%c",c);
+	      						c = getc(HISTFILER);
+						   }
+						}
+						else 
+						{
+							printf ("The File Don't Contain Much Commands");
+						}
+
+					   fclose(HISTFILER);
+
+					}
+				}
 			break;
 			case 2:
 				/***
@@ -221,24 +303,78 @@ int main(int argc, char *argv[])
 
 					}					
 				}
+				/*A Command with Arguments redirected to File "pwd > foo" */
+				else if (strcmp(tokens[0],"pwd") == 0)
+				{
+					if (strcmp(tokens[1],">") == 0)
+					{
+						FILE *fp;
 
-			/*A Command with Arguments Read from File "Sort < testfile"*/	
-			
+						fp = fopen(tokens[2], "a");
+
+						char cwd[1000];
+
+						if (fp != NULL)
+						{					 
+					 		if (getcwd(cwd, sizeof(cwd)) != NULL)
+					 		{
+								fprintf(fp,"%s\n",cwd);
+					 		} 
+
+					 		fclose(fp);
+					 		
+						}
+
+					}
+				}
+
+			/*A Command with Arguments Read from File "cat < testfile"*/	
+				else if (strcmp(tokens[0],"cat") == 0)
+				{
+					if (strcmp(tokens[1],"<") == 0)
+					{
+						FILE *fp;
+
+						fp = fopen(tokens[2], "r");
+
+						char cwd[1000];
+
+						if (fp != NULL)
+						{
+
+							char C;
+							do
+							{
+								C = fgetc(fp) ;
+								if (C != EOF) printf("%c",C);
+							}while (C != EOF);
+
+
+					 		fclose(fp);
+					 		
+						}
+						else 
+						{
+							printf("File Not Found Please Create One \n");
+						}
+
+					}
+				}
 				
 			break ;
 			case 3:
+			/*A Command without Arguments Piped to Another Command "locate file | cat*/
+			/*if (strcmp(tokens[2],"|") == 0)
+			{
 
-			/*A Command with Arguments redirected to File "ls -l > foo" */
+			}*/
 
-
-
-
-			/*A Command without Arguments Piped to Another Command "ls -l | more"*/
 
 
 			break;
 		}	
 	}
+	fclose(HISTFILEP);
 }
 
 
