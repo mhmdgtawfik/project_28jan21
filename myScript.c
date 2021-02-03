@@ -9,41 +9,117 @@
 
 int is_hidden(const char *name);
 
+int CommandExecute (int Size ,char * Command);
+
+FILE * HISTFILEP = NULL;
+
+FILE * Profile = NULL;
+
+char cwd[100];
+
+int commands = 0;
+
+char Enviroment[3][10] = {"PATH","HOME","HISTFILE"};
+
+char EnivromentValue[3][50] = {"/bin",".",".bash_history"};
+
+int PIDFlag = 0;
+
+int PIDs[50];
+
 int main(void)
 {
-	FILE *HISTFILEP = NULL;
+	HISTFILEP = fopen(EnivromentValue[2], "a+");	
 
-	char HISTFILE[100]= ".bash_history";
+	/*Open File .bash_profile and Run the Commands from it */
+	Profile = fopen(".CIS3110_profile","a+");
 
-	HISTFILEP = fopen(HISTFILE, "a+");
+	if (Profile == NULL ) 
+	{
+		printf("Error Init Shell Terminating");
 
-	char cwd[1000];
+		exit(1);
 
-	int commands = 0;
+	}
+
+	else {
+		/* Get the first line of the file. */
+
+		char * line_buf  =NULL;
+
+		unsigned long int line_buf_size = 0;
+
+  	    int line_size = 0;
+
+		line_size = getline(&line_buf, &line_buf_size, Profile);
+
+  		while (line_size >= 0 && line_buf != NULL)
+  		{
+  			/*Get the Rest of the File */
+  			CommandExecute(line_buf_size,line_buf);
+
+  			line_size = getline(&line_buf, &line_buf_size, Profile);
+  		}
+
+	}
+
 	while (1)
 	{
-		char Input[100] ;
-		char *tokens[10] ;
-		int i = 0;
-		int strlength = 0;
 		char s[100] ;
+		char Input[100] ;
+		int CommandReturn = 0;
+		int Y = 0;
+		char C ;
+		
 		getcwd(s, 100);
+		
 		printf("%s>",s);
 		
 		fgets(Input,100,stdin);
+		
+		fprintf(HISTFILEP," %d  %s",commands,Input);
+		
+		fclose(HISTFILEP);
+		
+		HISTFILEP = fopen(EnivromentValue[2], "a+");
+		
+		C = Input[0];
+
+		while (C != '\n')
+		{
+			Y++;
+			C = Input[Y];
+
+		}
+
+		Input[Y] = '\0' ;
+
+		CommandReturn = CommandExecute(100,Input);
+	}
+}
+
+
+int is_hidden(const char *name)
+{
+  return (name[0] == '.' &&
+         strcmp(name, ".") != 0 &&
+         strcmp(name, "..") != 0);
+}
+
+
+int CommandExecute (int Size ,char * Command )
+{
+		char *tokens[10] ;
+
+		int strlength = 0;
+
+		int i = 0;
 
 		commands++;
-
-		fprintf(HISTFILEP," %d  %s",commands,Input);
-
-		int PIDFlag = 0;
-		int PIDs[100];
 		
-		tokens[0] = strtok(Input," "); 
+		tokens[0] = strtok(Command," "); 
 		
 		strlength = strlen(tokens[0]);
-		
-		if(tokens[0][strlength-1]=='\n')tokens[0][strlength-1]='\0';
 
 		while(i < 9 && tokens[i] != NULL) 
 		{
@@ -54,12 +130,8 @@ int main(void)
 			if (tokens[i] != NULL)
 			{
 				strlength = strlen(tokens[i]);
-
-				if(tokens[i][strlength-1]=='\n') tokens[i][strlength-1]='\0';		
-			
 			}
 		}
-
 
 		switch ((i-1))
 		{
@@ -104,7 +176,7 @@ int main(void)
 				else if (strcmp(tokens[0],"history") == 0)
 				{
 
-					FILE * HISTFILER = fopen(HISTFILE,"r");
+					FILE * HISTFILER = fopen(EnivromentValue[2],"r");
 					int c = getc(HISTFILER);
 					while (c != EOF)
 					{
@@ -121,6 +193,7 @@ int main(void)
 				/***
 				command with 1 argument  {"ls &"}
 				***/
+
 
 				if (strcmp(tokens[0],"ls") == 0)
 				{
@@ -176,7 +249,6 @@ int main(void)
 					}
 
 				}
-
 				/*A Command with Arguments "cd "Directory"*/
 				else if (strcmp(tokens[0],"cd") == 0)
 				{
@@ -193,19 +265,19 @@ int main(void)
 					if (strcmp(tokens[1],"-c") == 0)
 					{
 						fclose(HISTFILEP);
-						HISTFILEP = fopen(HISTFILE,"w");
+						HISTFILEP = fopen(EnivromentValue[2],"w");
 						fprintf(HISTFILEP,"%c",EOF);
 						fclose(HISTFILEP);
-						HISTFILEP = fopen(HISTFILE,"a+");
+						HISTFILEP = fopen(EnivromentValue[2],"a+");
 						commands = 0;
 						
 					}
 					else
 					{
-						FILE * HISTFILER = fopen(HISTFILE,"r");
+						FILE * HISTFILER = fopen(EnivromentValue[2],"r");
 						int c = getc(HISTFILER);
 						int Line = 0;
-						int LineOffest[1000];
+						static int LineOffest[1000];
 						int CharacterCount = 0;
 						int StartRequestLine = 0;
    						while (c != EOF)
@@ -241,6 +313,112 @@ int main(void)
 					   fclose(HISTFILER);
 
 					}
+				}
+				else if (strcmp(tokens[0],"echo") == 0)
+				{
+
+					if(tokens[1][0] == '$')
+					{
+						char C = tokens[1][1];
+						int i  = 0;
+						char Env[10] ;
+						while (C != '\0')
+						{
+							Env[i] = C ;
+							i++;
+							C = tokens[1][i+1];
+						}
+						Env[i] = '\0';
+
+						if ((strcmp(Env,"HOME") == 0))
+						{
+							printf("%s\n",EnivromentValue[1]);
+						}
+						else if ((strcmp(Env,"PATH") == 0))
+						{
+							printf("%s\n",EnivromentValue[0]);
+						}
+						else if ((strcmp(Env,"HISTFILE") == 0))
+						{
+							printf("%s\n",EnivromentValue[2]);
+						}
+						else 
+						{
+							printf("No Enviroment Variable with These Name \n");
+
+						}
+
+					}
+				}
+				else if (strcmp(tokens[0],"export") == 0)
+				{
+					char C ;
+					int i = 0;
+					int equalIndex = 0;
+					int DollarSignIndices[10] ;
+					int DollarSignNumber = 0;
+					char Env[10] ;
+					int EnviromentIndex = 0;
+					C = tokens[1][0];
+					printf("%d",EnviromentIndex);
+					while (C != '\0')
+					{
+						if (C == '=')
+						{
+							equalIndex = i;
+						}
+						else if (C == '$')
+						{
+							DollarSignIndices[DollarSignNumber]= i;
+							DollarSignNumber ++;
+						}
+						i++;
+
+					}
+
+
+					C = tokens[1][1];
+					i  = 0;
+	
+					while (C != '\0')
+					{
+						Env[i] = C ;
+						i++;
+						C = tokens[1][i+1];
+					}
+					Env[i] = '\0';
+
+					if ((strcmp(Env,"HOME") == 0))
+					{
+						EnviromentIndex = 1;
+
+					}
+					else if ((strcmp(Env,"PATH") == 0))
+					{
+						EnviromentIndex = 0;
+					}
+					else if ((strcmp(Env,"HISTFILE") == 0))
+					{
+						EnviromentIndex = 2;
+					}
+					else 
+					{
+						printf("No Enviroment Variable with These Name \n");
+					}
+
+
+					int EniromentVariableSize = sizeof(EnivromentValue[EnviromentIndex]);
+					
+					int R = 1;
+					int Q = 0;
+
+					for (int Q = EniromentVariableSize; Q < (sizeof(tokens[1]) - equalIndex) ; Q++,R++)
+					{
+						EnivromentValue[EnviromentIndex][Q] = tokens[1][equalIndex+R];
+
+					}
+					EnivromentValue[EnviromentIndex][Q] = '\0';
+
 				}
 			break;
 			case 2:
@@ -373,14 +551,4 @@ int main(void)
 
 			break;
 		}	
-	}
-	fclose(HISTFILEP);
-}
-
-
-int is_hidden(const char *name)
-{
-  return (name[0] == '.' &&
-         strcmp(name, ".") != 0 &&
-         strcmp(name, "..") != 0);
 }
